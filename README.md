@@ -196,7 +196,7 @@ socket.emit('joinPost', 'post_id_here');
 ## 📁 Project Structure
 
 ```
-marya/
+backend/
 ├── config/
 │   └── database.js          # MongoDB connection
 ├── controllers/

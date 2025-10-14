@@ -1,0 +1,781 @@
+{
+      "info": {
+            "_postman_id": "social-blogging-platform-api",
+            "name": "Social Blogging Platform API",
+            "description": "Complete API collection for Real-Time Social Blogging Platform with authentication, posts, comments, and reactions",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+      },
+      "item": [
+            {
+                  "name": "Authentication",
+                  "item": [
+                        {
+                              "name": "Signup",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"username\": \"johndoe\",\n    \"email\": \"johndoe@example.com\",\n    \"password\": \"password123\",\n    \"role\": \"author\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/auth/signup",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "auth",
+                                                "signup"
+                                          ]
+                                    },
+                                    "description": "Register a new user. Roles: reader, author, admin"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Login",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"email\": \"johndoe@example.com\",\n    \"password\": \"password123\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/auth/login",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "auth",
+                                                "login"
+                                          ]
+                                    },
+                                    "description": "Login with email and password. Returns JWT token"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Get Current User",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/auth/me",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "auth",
+                                                "me"
+                                          ]
+                                    },
+                                    "description": "Get current logged in user profile"
+                              },
+                              "response": []
+                        }
+                  ]
+            },
+            {
+                  "name": "Users",
+                  "item": [
+                        {
+                              "name": "Get All Users",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/users?page=1&limit=10",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "users"
+                                          ],
+                                          "query": [
+                                                {
+                                                      "key": "page",
+                                                      "value": "1"
+                                                },
+                                                {
+                                                      "key": "limit",
+                                                      "value": "10"
+                                                },
+                                                {
+                                                      "key": "role",
+                                                      "value": "author",
+                                                      "disabled": true
+                                                },
+                                                {
+                                                      "key": "search",
+                                                      "value": "john",
+                                                      "disabled": true
+                                                }
+                                          ]
+                                    },
+                                    "description": "Get all users with optional pagination and filtering"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Get User by ID",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/users/:userId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "users",
+                                                ":userId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "userId",
+                                                      "value": "user_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Get specific user details by ID"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Update User Profile",
+                              "request": {
+                                    "method": "PUT",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"username\": \"johndoe_updated\",\n    \"bio\": \"Software developer and tech enthusiast\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/users/:userId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "users",
+                                                ":userId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "userId",
+                                                      "value": "user_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Update user profile. Can only update own profile unless admin"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Update User Profile with Avatar",
+                              "request": {
+                                    "method": "PUT",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "formdata",
+                                          "formdata": [
+                                                {
+                                                      "key": "username",
+                                                      "value": "johndoe_updated",
+                                                      "type": "text"
+                                                },
+                                                {
+                                                      "key": "bio",
+                                                      "value": "Software developer",
+                                                      "type": "text"
+                                                },
+                                                {
+                                                      "key": "avatar",
+                                                      "type": "file",
+                                                      "src": []
+                                                }
+                                          ]
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/users/:userId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "users",
+                                                ":userId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "userId",
+                                                      "value": "user_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Update user profile with avatar image upload"
+                              },
+                              "response": []
+                        }
+                  ]
+            },
+            {
+                  "name": "Posts",
+                  "item": [
+                        {
+                              "name": "Create Post",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"title\": \"Getting Started with Node.js\",\n    \"content\": \"Node.js is a powerful runtime environment for building scalable applications. In this post, we'll explore the basics...\",\n    \"tags\": [\"nodejs\", \"javascript\", \"backend\"],\n    \"status\": \"published\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts"
+                                          ]
+                                    },
+                                    "description": "Create a new post. Requires author or admin role"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Create Post with Image",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "formdata",
+                                          "formdata": [
+                                                {
+                                                      "key": "title",
+                                                      "value": "Beautiful Sunset Photography",
+                                                      "type": "text"
+                                                },
+                                                {
+                                                      "key": "content",
+                                                      "value": "Check out this amazing sunset I captured...",
+                                                      "type": "text"
+                                                },
+                                                {
+                                                      "key": "tags",
+                                                      "value": "[\"photography\", \"nature\"]",
+                                                      "type": "text"
+                                                },
+                                                {
+                                                      "key": "image",
+                                                      "type": "file",
+                                                      "src": []
+                                                }
+                                          ]
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts"
+                                          ]
+                                    },
+                                    "description": "Create a post with image upload"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Get All Posts",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts?page=1&limit=10&sortBy=createdAt&order=desc",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts"
+                                          ],
+                                          "query": [
+                                                {
+                                                      "key": "page",
+                                                      "value": "1"
+                                                },
+                                                {
+                                                      "key": "limit",
+                                                      "value": "10"
+                                                },
+                                                {
+                                                      "key": "search",
+                                                      "value": "nodejs",
+                                                      "disabled": true
+                                                },
+                                                {
+                                                      "key": "author",
+                                                      "value": "author_id",
+                                                      "disabled": true
+                                                },
+                                                {
+                                                      "key": "tags",
+                                                      "value": "nodejs,javascript",
+                                                      "disabled": true
+                                                },
+                                                {
+                                                      "key": "status",
+                                                      "value": "published"
+                                                },
+                                                {
+                                                      "key": "sortBy",
+                                                      "value": "createdAt"
+                                                },
+                                                {
+                                                      "key": "order",
+                                                      "value": "desc"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Get all posts with pagination, search, and filtering"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Get Post by ID",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Get specific post by ID"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Update Post",
+                              "request": {
+                                    "method": "PUT",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"title\": \"Getting Started with Node.js - Updated\",\n    \"content\": \"Updated content here...\",\n    \"tags\": [\"nodejs\", \"javascript\", \"backend\", \"tutorial\"]\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Update a post. Must be post author or admin"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Delete Post",
+                              "request": {
+                                    "method": "DELETE",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Delete a post. Must be post author or admin"
+                              },
+                              "response": []
+                        }
+                  ]
+            },
+            {
+                  "name": "Comments",
+                  "item": [
+                        {
+                              "name": "Add Comment to Post",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"content\": \"Great article! Very informative and well written.\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId/comments",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId",
+                                                "comments"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Add a comment to a post"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Get Comments for Post",
+                              "request": {
+                                    "method": "GET",
+                                    "header": [],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId/comments?page=1&limit=20",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId",
+                                                "comments"
+                                          ],
+                                          "query": [
+                                                {
+                                                      "key": "page",
+                                                      "value": "1"
+                                                },
+                                                {
+                                                      "key": "limit",
+                                                      "value": "20"
+                                                },
+                                                {
+                                                      "key": "sortBy",
+                                                      "value": "createdAt",
+                                                      "disabled": true
+                                                },
+                                                {
+                                                      "key": "order",
+                                                      "value": "desc",
+                                                      "disabled": true
+                                                }
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Get all comments for a specific post"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Delete Comment",
+                              "request": {
+                                    "method": "DELETE",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/comments/:commentId",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                "comments",
+                                                ":commentId"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "commentId",
+                                                      "value": "comment_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Delete a comment. Must be comment author or admin"
+                              },
+                              "response": []
+                        }
+                  ]
+            },
+            {
+                  "name": "Reactions (Likes)",
+                  "item": [
+                        {
+                              "name": "Like Post",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"reactionType\": \"like\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId/like",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId",
+                                                "like"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Like a post. Reaction types: like, love, haha, wow, sad, angry"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Unlike Post",
+                              "request": {
+                                    "method": "DELETE",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/posts/:postId/like",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "posts",
+                                                ":postId",
+                                                "like"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "postId",
+                                                      "value": "post_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Remove like from a post"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Like Comment",
+                              "request": {
+                                    "method": "POST",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          },
+                                          {
+                                                "key": "Content-Type",
+                                                "value": "application/json"
+                                          }
+                                    ],
+                                    "body": {
+                                          "mode": "raw",
+                                          "raw": "{\n    \"reactionType\": \"like\"\n}"
+                                    },
+                                    "url": {
+                                          "raw": "{{base_url}}/api/comments/:commentId/like",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "comments",
+                                                ":commentId",
+                                                "like"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "commentId",
+                                                      "value": "comment_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Like a comment. Reaction types: like, love, haha, wow, sad, angry"
+                              },
+                              "response": []
+                        },
+                        {
+                              "name": "Unlike Comment",
+                              "request": {
+                                    "method": "DELETE",
+                                    "header": [
+                                          {
+                                                "key": "Authorization",
+                                                "value": "Bearer {{auth_token}}"
+                                          }
+                                    ],
+                                    "url": {
+                                          "raw": "{{base_url}}/api/comments/:commentId/like",
+                                          "host": [
+                                                "{{base_url}}"
+                                          ],
+                                          "path": [
+                                                "api",
+                                                "comments",
+                                                ":commentId",
+                                                "like"
+                                          ],
+                                          "variable": [
+                                                {
+                                                      "key": "commentId",
+                                                      "value": "comment_id_here"
+                                                }
+                                          ]
+                                    },
+                                    "description": "Remove like from a comment"
+                              },
+                              "response": []
+                        }
+                  ]
+            }
+      ],
+      "variable": [
+            {
+                  "key": "base_url",
+                  "value": "http://localhost:5000",
+                  "type": "string"
+            },
+            {
+                  "key": "auth_token",
+                  "value": "",
+                  "type": "string"
+            }
+      ]
+}
