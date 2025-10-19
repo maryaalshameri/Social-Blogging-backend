@@ -43,10 +43,20 @@ const userSchema = new mongoose.Schema({
       following: [{
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
-      }]
-}, {
+      }],
+      isEmailVerified: {
+      type: Boolean,
+      default: false
+      },
+      emailVerificationToken: String,
+      emailVerificationExpires: Date,
+      passwordResetToken: String,
+      passwordResetExpires: Date
+      }, {
       timestamps: true
-});
+      });
+userSchema.index({ followers: 1 });
+userSchema.index({ following: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

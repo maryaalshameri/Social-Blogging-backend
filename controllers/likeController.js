@@ -57,15 +57,45 @@ exports.likePost = async (req, res, next) => {
             post.likesCount += 1;
             await post.save();
 
-            // Emit socket event for new like
-            if (req.app.get('io')) {
-                  req.app.get('io').emit('newLike', {
+            // Emit socket events for real-time updates
+            const io = req.app.get('io');
+            if (io) {
+                  // حدث الإعجاب الجديد للإشعارات
+                  io.emit('newLike', {
                         type: 'Post',
                         targetId: postId,
                         userId: req.user.id,
-                        reactionType
+                        reactionType,
+                        post: {
+                              _id: post._id,
+                              title: post.title,
+                              author: post.author
+                        }
                   });
+
+                  // حدث تحديث عدد الإعجابات في الوقت الحقيقي
+                  io.emit('postLiked', {
+                        postId: postId,
+                        userId: req.user.id,
+                        likesCount: post.likesCount
+                  });
+
+                  console.log(`Socket: Post ${postId} liked by user ${req.user.id}`);
+                 
             }
+
+
+             // في exports.likePost بعد إنشاء الإعجاب
+                  const notificationService = req.app.get('notificationService');
+                  if (notificationService) {
+                  await notificationService.notifyPostLike({
+                  postId,
+                  postAuthorId: post.author,
+                  likedByUserId: req.user.id,
+                  likedByUsername: req.user.username,
+                  postTitle: post.title
+                  });
+                  }
 
             res.status(201).json({
                   success: true,
@@ -102,6 +132,18 @@ exports.unlikePost = async (req, res, next) => {
             if (post) {
                   post.likesCount = Math.max(0, post.likesCount - 1);
                   await post.save();
+
+                  // Emit socket event for real-time update
+                  const io = req.app.get('io');
+                  if (io) {
+                        io.emit('postUnliked', {
+                              postId: postId,
+                              userId: req.user.id,
+                              likesCount: post.likesCount
+                        });
+
+                        console.log(`Socket: Post ${postId} unliked by user ${req.user.id}`);
+                  }
             }
 
             res.status(200).json({
@@ -118,111 +160,127 @@ exports.unlikePost = async (req, res, next) => {
 // @route   POST /api/comments/:commentId/like
 // @access  Private
 exports.likeComment = async (req, res, next) => {
-      try {
-            const { commentId } = req.params;
-            const { reactionType = 'like' } = req.body;
+  try {
+    const { commentId } = req.params;
+    const { reactionType = 'like' } = req.body;
 
-            // Check if comment exists
-            const comment = await Comment.findById(commentId);
-            if (!comment) {
-                  return res.status(404).json({
-                        success: false,
-                        message: 'Comment not found'
-                  });
-            }
+    // Check if comment exists
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
 
-            // Check if user already liked the comment
-            const existingLike = await Like.findOne({
-                  user: req.user.id,
-                  targetType: 'Comment',
-                  targetId: commentId
-            });
+    // Check if user already liked the comment
+    const existingLike = await Like.findOne({
+      user: req.user.id,
+      targetType: 'Comment',
+      targetId: commentId
+    });
 
-            if (existingLike) {
-                  // Update reaction type if different
-                  if (existingLike.reactionType !== reactionType) {
-                        existingLike.reactionType = reactionType;
-                        await existingLike.save();
+    if (existingLike) {
+      // Update reaction type if different
+      if (existingLike.reactionType !== reactionType) {
+        existingLike.reactionType = reactionType;
+        await existingLike.save();
 
-                        return res.status(200).json({
-                              success: true,
-                              message: 'Reaction updated successfully',
-                              data: existingLike
-                        });
-                  }
-
-                  return res.status(400).json({
-                        success: false,
-                        message: 'You have already liked this comment'
-                  });
-            }
-
-            // Create new like
-            const like = await Like.create({
-                  user: req.user.id,
-                  targetType: 'Comment',
-                  targetId: commentId,
-                  reactionType
-            });
-
-            // Update comment likes count
-            comment.likesCount += 1;
-            await comment.save();
-
-            // Emit socket event for new like
-            if (req.app.get('io')) {
-                  req.app.get('io').emit('newLike', {
-                        type: 'Comment',
-                        targetId: commentId,
-                        userId: req.user.id,
-                        reactionType
-                  });
-            }
-
-            res.status(201).json({
-                  success: true,
-                  message: 'Comment liked successfully',
-                  data: like
-            });
-      } catch (error) {
-            next(error);
+        return res.status(200).json({
+          success: true,
+          message: 'Reaction updated successfully',
+          data: existingLike
+        });
       }
+
+      return res.status(400).json({
+        success: false,
+        message: 'You have already liked this comment'
+      });
+    }
+
+    // Create new like
+    const like = await Like.create({
+      user: req.user.id,
+      targetType: 'Comment',
+      targetId: commentId,
+      reactionType
+    });
+
+    // Update comment likes count
+    comment.likesCount += 1;
+    await comment.save();
+
+    // Emit socket events for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      // حدث تحديث عدد الإعجابات في الوقت الحقيقي
+      io.emit('commentLiked', {
+        commentId: commentId,
+        userId: req.user.id,
+        likesCount: comment.likesCount
+      });
+
+      console.log(`Socket: Comment ${commentId} liked by user ${req.user.id}`);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Comment liked successfully',
+      data: like
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // @desc    Unlike a comment
 // @route   DELETE /api/comments/:commentId/like
 // @access  Private
 exports.unlikeComment = async (req, res, next) => {
-      try {
-            const { commentId } = req.params;
+  try {
+    const { commentId } = req.params;
 
-            const like = await Like.findOneAndDelete({
-                  user: req.user.id,
-                  targetType: 'Comment',
-                  targetId: commentId
-            });
+    const like = await Like.findOneAndDelete({
+      user: req.user.id,
+      targetType: 'Comment',
+      targetId: commentId
+    });
 
-            if (!like) {
-                  return res.status(404).json({
-                        success: false,
-                        message: 'Like not found'
-                  });
-            }
+    if (!like) {
+      return res.status(404).json({
+        success: false,
+        message: 'Like not found'
+      });
+    }
 
-            // Update comment likes count
-            const comment = await Comment.findById(commentId);
-            if (comment) {
-                  comment.likesCount = Math.max(0, comment.likesCount - 1);
-                  await comment.save();
-            }
+    // Update comment likes count
+    const comment = await Comment.findById(commentId);
+    if (comment) {
+      comment.likesCount = Math.max(0, comment.likesCount - 1);
+      await comment.save();
 
-            res.status(200).json({
-                  success: true,
-                  message: 'Comment unliked successfully',
-                  data: {}
-            });
-      } catch (error) {
-            next(error);
+      // Emit socket event for real-time update
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('commentUnliked', {
+          commentId: commentId,
+          userId: req.user.id,
+          likesCount: comment.likesCount
+        });
+
+        console.log(`Socket: Comment ${commentId} unliked by user ${req.user.id}`);
       }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Comment unliked successfully',
+      data: {}
+    });
+  } catch (error) {
+    next(error);
+  }
 };
+
 

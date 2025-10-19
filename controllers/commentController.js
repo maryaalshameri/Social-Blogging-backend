@@ -32,18 +32,100 @@ exports.createComment = async (req, res, next) => {
             post.commentsCount += 1;
             await post.save();
 
-            // Emit socket event for new comment
-            if (req.app.get('io')) {
-                  req.app.get('io').emit('newComment', {
-                        comment,
-                        postId
+            // Emit socket events for real-time updates
+            const io = req.app.get('io');
+            if (io) {
+                  // حدث التعليق الجديد للإشعارات
+                  io.emit('newComment', {
+                        comment: comment,
+                        postId: postId,
+                        userId: req.user.id
                   });
-            }
 
+                  // حدث إضافة التعليق في الوقت الحقيقي
+                  io.emit('commentAdded', {
+                        postId: postId,
+                        comment: comment
+                  });
+
+                  console.log(`Socket: New comment added to post ${postId} by user ${req.user.id}`);
+                  
+            }
+             const notificationService = req.app.get('notificationService');
+                  if (notificationService) {
+                    await notificationService.notifyPostComment({
+                      postId,
+                      postAuthorId: post.author,
+                      commentAuthorId: req.user.id,
+                      commentAuthorUsername: req.user.username,
+                      postTitle: post.title,
+                      commentContent: content
+                    });
+                  }
             res.status(201).json({
                   success: true,
                   message: 'Comment added successfully',
                   data: comment
+            });
+      } catch (error) {
+            next(error);
+      }
+};
+
+// @desc    Delete a comment
+// @route   DELETE /api/comments/:id
+// @access  Private (author of comment or admin)
+exports.deleteComment = async (req, res, next) => {
+      try {
+            const comment = await Comment.findById(req.params.id);
+
+            if (!comment) {
+                  return res.status(404).json({
+                        success: false,
+                        message: 'Comment not found'
+                  });
+            }
+
+            // Check if user is author or admin
+            if (comment.author.toString() !== req.user.id && req.user.role !== 'admin') {
+                  return res.status(403).json({
+                        success: false,
+                        message: 'Not authorized to delete this comment'
+                  });
+            }
+
+            const postId = comment.post;
+
+            // Delete associated likes
+            await Like.deleteMany({ targetType: 'Comment', targetId: req.params.id });
+
+            // Delete child comments if any
+            await Comment.deleteMany({ parentComment: req.params.id });
+
+            await Comment.findByIdAndDelete(req.params.id);
+
+            // Update post comments count
+            const post = await Post.findById(postId);
+            if (post) {
+                  post.commentsCount = Math.max(0, post.commentsCount - 1);
+                  await post.save();
+
+                  // Emit socket event for real-time update
+                  const io = req.app.get('io');
+                  if (io) {
+                        io.emit('commentDeleted', {
+                              postId: postId,
+                              commentId: req.params.id
+                        });
+
+                        console.log(`Socket: Comment ${req.params.id} deleted from post ${postId}`);
+                  }
+            }
+
+            res.status(200).json({
+                  success: true,
+                  message: 'Comment deleted successfully',
+                  data: {}
             });
       } catch (error) {
             next(error);
@@ -95,51 +177,51 @@ exports.getCommentsByPost = async (req, res, next) => {
 // @desc    Delete a comment
 // @route   DELETE /api/comments/:id
 // @access  Private (author of comment or admin)
-exports.deleteComment = async (req, res, next) => {
-      try {
-            const comment = await Comment.findById(req.params.id);
+// exports.deleteComment = async (req, res, next) => {
+//       try {
+//             const comment = await Comment.findById(req.params.id);
 
-            if (!comment) {
-                  return res.status(404).json({
-                        success: false,
-                        message: 'Comment not found'
-                  });
-            }
+//             if (!comment) {
+//                   return res.status(404).json({
+//                         success: false,
+//                         message: 'Comment not found'
+//                   });
+//             }
 
-            // Check if user is author or admin
-            if (comment.author.toString() !== req.user.id && req.user.role !== 'admin') {
-                  return res.status(403).json({
-                        success: false,
-                        message: 'Not authorized to delete this comment'
-                  });
-            }
+//             // Check if user is author or admin
+//             if (comment.author.toString() !== req.user.id && req.user.role !== 'admin') {
+//                   return res.status(403).json({
+//                         success: false,
+//                         message: 'Not authorized to delete this comment'
+//                   });
+//             }
 
-            const postId = comment.post;
+//             const postId = comment.post;
 
-            // Delete associated likes
-            await Like.deleteMany({ targetType: 'Comment', targetId: req.params.id });
+//             // Delete associated likes
+//             await Like.deleteMany({ targetType: 'Comment', targetId: req.params.id });
 
-            // Delete child comments if any
-            await Comment.deleteMany({ parentComment: req.params.id });
+//             // Delete child comments if any
+//             await Comment.deleteMany({ parentComment: req.params.id });
 
-            await Comment.findByIdAndDelete(req.params.id);
+//             await Comment.findByIdAndDelete(req.params.id);
 
-            // Update post comments count
-            const post = await Post.findById(postId);
-            if (post) {
-                  post.commentsCount = Math.max(0, post.commentsCount - 1);
-                  await post.save();
-            }
+//             // Update post comments count
+//             const post = await Post.findById(postId);
+//             if (post) {
+//                   post.commentsCount = Math.max(0, post.commentsCount - 1);
+//                   await post.save();
+//             }
 
-            res.status(200).json({
-                  success: true,
-                  message: 'Comment deleted successfully',
-                  data: {}
-            });
-      } catch (error) {
-            next(error);
-      }
-};
+//             res.status(200).json({
+//                   success: true,
+//                   message: 'Comment deleted successfully',
+//                   data: {}
+//             });
+//       } catch (error) {
+//             next(error);
+//       }
+// };
 
 // @desc    Get comments by author's posts
 // @route   GET /api/comments/author/:authorId

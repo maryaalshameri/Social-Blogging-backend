@@ -44,63 +44,72 @@ exports.createPost = async (req, res, next) => {
 // @route   GET /api/posts
 // @access  Public
 exports.getAllPosts = async (req, res, next) => {
-      try {
-            const {
-                  page = 1,
-                  limit = 10,
-                  search,
-                  author,
-                  tags,
-                  status = 'published',
-                  sortBy = 'createdAt',
-                  order = 'desc'
-            } = req.query;
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      author,
+      tags,
+      status, // إزالة القيمة الافتراضية هنا
+      sortBy = 'createdAt',
+      order = 'desc'
+    } = req.query;
 
-            const query = {};
+    const query = {};
 
-            // Filter by status (unless user is viewing their own posts)
-            if (status) {
-                  query.status = status;
-            }
+    // Filter by status (only if provided)
+    if (status && status !== 'all') {
+      query.status = status;
+    }
 
-            // Search in title and content
-            if (search) {
-                  query.$text = { $search: search };
-            }
+    // إذا كان المستخدم يطلب منشوراته الخاصة، عرض جميع الحالات
+    if (author && author === req.user?.id) {
+      // لا نطبق أي فلتر على الحالة للمستخدمين الذين يشاهدون منشوراتهم الخاصة
+    } else if (!status) {
+      // إذا لم يتم تحديد حالة وعرض للعامة، افترض المنشورات المنشورة فقط
+      query.status = 'published';
+    }
 
-            // Filter by author
-            if (author) {
-                  query.author = author;
-            }
+    // باقي الكود كما هو...
+    // Search in title and content
+    if (search) {
+      query.$text = { $search: search };
+    }
 
-            // Filter by tags
-            if (tags) {
-                  query.tags = { $in: tags.split(',') };
-            }
+    // Filter by author
+    if (author) {
+      query.author = author;
+    }
 
-            const sortOrder = order === 'asc' ? 1 : -1;
-            const sortOptions = { [sortBy]: sortOrder };
+    // Filter by tags
+    if (tags) {
+      query.tags = { $in: tags.split(',') };
+    }
 
-            const posts = await Post.find(query)
-                  .populate('author', 'username avatar')
-                  .limit(limit * 1)
-                  .skip((page - 1) * limit)
-                  .sort(sortOptions);
+    const sortOrder = order === 'asc' ? 1 : -1;
+    const sortOptions = { [sortBy]: sortOrder };
 
-            const count = await Post.countDocuments(query);
+    const posts = await Post.find(query)
+      .populate('author', 'username avatar')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort(sortOptions);
 
-            res.status(200).json({
-                  success: true,
-                  data: posts,
-                  pagination: {
-                        total: count,
-                        page: parseInt(page),
-                        pages: Math.ceil(count / limit)
-                  }
-            });
-      } catch (error) {
-            next(error);
+    const count = await Post.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: posts,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit)
       }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // @desc    Get single post by ID
@@ -119,8 +128,8 @@ exports.getPostById = async (req, res, next) => {
             }
 
             // Increment view count
-            post.views += 1;
-            await post.save();
+            // post.views += 1;
+            // await post.save();
 
             res.status(200).json({
                   success: true,
@@ -209,7 +218,13 @@ exports.deletePost = async (req, res, next) => {
             await Like.deleteMany({ targetType: 'Post', targetId: req.params.id });
 
             await Post.findByIdAndDelete(req.params.id);
-
+                   if (req.app.get('io')) {
+                        req.app.get('io').emit('postDeleted', {
+                        postId: req.params.id,
+                        deletedBy: req.user.id,
+                        timestamp: new Date()
+                        });
+                  }
             res.status(200).json({
                   success: true,
                   message: 'Post deleted successfully',

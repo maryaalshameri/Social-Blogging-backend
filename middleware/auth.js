@@ -69,3 +69,13 @@ exports.optionalAuth = async (req, res, next) => {
       }
 };
 
+exports.requireEmailVerification = (req, res, next) => {
+  if (!req.user.isEmailVerified) {
+    return res.status(403).json({
+      success: false,
+      message: 'Please verify your email address to access this resource'
+    });
+  }
+  next();
+};
+
