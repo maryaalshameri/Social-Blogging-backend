@@ -75,7 +75,10 @@ npm run dev
 
 **Production mode**:
 ```bash
+
+npm install nodemailer
 npm start
+
 ```
 
 The server will start on `http://localhost:5000`
