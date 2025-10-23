@@ -233,8 +233,8 @@ backend/
 |
 ├── uploads/                    # Uploaded files directory
 |ــ services/
-|   └── emailService.js      # config mail
-|   └── likeController.js    # config notifications
+|   └── emailService.js           # config mail
+|   └── notificationService.js    # config notifications
 ├── server.js                # Main application file
 ├── package.json             # Dependencies
 ├── .gitignore               # Git ignore file
