@@ -203,11 +203,14 @@ backend/
 ├── config/
 │   └── database.js          # MongoDB connection
 ├── controllers/
-│   ├── authController.js    # Authentication logic
-│   ├── userController.js    # User management
-│   ├── postController.js    # Post CRUD operations
-│   ├── commentController.js # Comment management
-│   └── likeController.js    # Reaction/like logic
+│   ├── authController.js            # Authentication logic
+│   ├── userController.js            # User management
+│   ├── postController.js            # Post CRUD operations
+│   ├── commentController.js         # Comment management
+│   └── likeController.js            # Reaction/like logic
+|   └── followController.js          # Reaction/follow logic
+|   └── notificationController.js    # notifications managment
+|   └── readerController.js          # reader role
 ├── middleware/
 │   ├── auth.js              # JWT authentication
 │   ├── upload.js            # File upload with multer
@@ -218,16 +221,23 @@ backend/
 │   ├── Post.js              # Post schema
 │   ├── Comment.js           # Comment schema
 │   └── Like.js              # Like/Reaction schema
+|   └── Notification.js      # Notification schema
 ├── routes/
-│   ├── authRoutes.js        # Auth endpoints
-│   ├── userRoutes.js        # User endpoints
-│   ├── postRoutes.js        # Post endpoints
-│   ├── commentRoutes.js     # Comment endpoints
-│   └── likeRoutes.js        # Like endpoints
-├── uploads/                 # Uploaded files directory
+│   ├── authRoutes.js           # Auth endpoints
+│   ├── userRoutes.js           # User endpoints
+│   ├── postRoutes.js           # Post endpoints
+│   ├── commentRoutes.js        # Comment endpoints
+│   └── likeRoutes.js           # Like endpoints
+|   └── notificationRoutes.js   # notification endpoints
+|   └── readerRoutes.js         # Reader role endpoints
+|
+├── uploads/                    # Uploaded files directory
+|ــ services/
+|   └── emailService.js      # config mail
+|   └── likeController.js    # config notifications
 ├── server.js                # Main application file
 ├── package.json             # Dependencies
-├── .gitignore              # Git ignore file
+├── .gitignore               # Git ignore file
 └── Social_Blogging_Platform.postman_collection.json
 ```
 

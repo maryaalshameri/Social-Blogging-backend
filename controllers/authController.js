@@ -211,52 +211,37 @@ exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
-    // البحث عن المستخدم
     const user = await User.findOne({ email });
 
     if (!user) {
-      // لأغراض الأمان، لا نخبر المستخدم بأن البريد الإلكتروني غير موجود
       return res.status(200).json({
         success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.'
+        message: 'If an account with that email exists, a password reset code has been sent.'
       });
     }
 
-    // إنشاء رمز إعادة تعيين كلمة المرور
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
+    // إنشاء كود مكون من 6 أرقام
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
     
+    // 🔵 الحل: حفظ الكود بدون تشفير
+    const passwordResetToken = resetCode;
     const passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 ساعة
 
-    // حفظ الرمز وتاريخ الانتهاء في قاعدة البيانات
     user.passwordResetToken = passwordResetToken;
     user.passwordResetExpires = passwordResetExpires;
     await user.save();
 
-    // إرسال بريد إعادة التعيين
-    try {
-      await sendPasswordResetEmail(user, resetToken); // ← هنا التغيير: استخدم resetToken بدلاً من passwordResetToken
-      
-      res.status(200).json({
-        success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.'
-      });
-    } catch (emailError) {
-      // في حالة فشل إرسال البريد، نقوم بحذف الرمز
-      user.passwordResetToken = undefined;
-      user.passwordResetExpires = undefined;
-      await user.save();
-      
-      throw emailError;
-    }
+    // إرسال البريد الإلكتروني
+    await sendPasswordResetEmail(user, resetCode);
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, a password reset code has been sent.'
+    });
   } catch (error) {
     next(error);
   }
 };
-
 // @desc    Reset password
 // @route   POST /api/auth/reset-password
 // @access  Public
@@ -264,27 +249,21 @@ exports.resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
 
-    // تشفير الرمز المرسل للمقارنة مع المخزن
-    const passwordResetToken = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
-
-    // البحث عن المستخدم بالرمز الصالح
+    // 🔵 الحل: إضافة .select('+password') لتحميل كلمة المرور
     const user = await User.findOne({
-      passwordResetToken,
+      passwordResetToken: token,
       passwordResetExpires: { $gt: Date.now() }
-    });
+    }).select('+password'); // ⚠️ مهم: تحميل كلمة المرور للمقارنة
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired reset token'
+        message: 'Invalid or expired reset code'
       });
     }
 
     // التحقق من قوة كلمة المرور الجديدة
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;    
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         success: false,
@@ -315,4 +294,3 @@ exports.resetPassword = async (req, res, next) => {
     next(error);
   }
 };
-
