@@ -2,24 +2,23 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 
+// في ملف followController.js
 exports.followUser = async (req, res, next) => {
   try {
     const targetUserId = req.params.id;
-    const currentUserId = req.user.id;
+    const followerId = req.user.id;
 
-    if (targetUserId === currentUserId) {
+    if (targetUserId === followerId) {
       return res.status(400).json({
         success: false,
         message: 'You cannot follow yourself'
       });
     }
 
-    const [currentUser, targetUser] = await Promise.all([
-      User.findById(currentUserId),
-      User.findById(targetUserId)
-    ]);
+    const targetUser = await User.findById(targetUserId);
+    const followerUser = await User.findById(followerId);
 
-    if (!targetUser) {
+    if (!targetUser || !followerUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -27,7 +26,7 @@ exports.followUser = async (req, res, next) => {
     }
 
     // التحقق إذا كان المستخدم يتابع بالفعل
-    const isAlreadyFollowing = currentUser.following.includes(targetUserId);
+    const isAlreadyFollowing = targetUser.followers.includes(followerId);
     
     if (isAlreadyFollowing) {
       return res.status(400).json({
@@ -36,36 +35,70 @@ exports.followUser = async (req, res, next) => {
       });
     }
 
-    // إضافة المتابعة
-    await Promise.all([
-      User.findByIdAndUpdate(currentUserId, {
-        $addToSet: { following: targetUserId }
-      }),
-      User.findByIdAndUpdate(targetUserId, {
-        $addToSet: { followers: currentUserId }
-      })
-    ]);
+    // تحديث المتابَع (إضافة المتابِع إلى قائمة المتابعين)
+    targetUser.followers.push(followerId);
+    targetUser.followersCount = targetUser.followers.length;
+    await targetUser.save();
 
-    // إرسال إشعار في الوقت الحقيقي
-    if (req.app.get('io')) {
-      req.app.get('io').to(`user_${targetUserId}`).emit('newFollower', {
-        followerId: currentUserId,
-        followerUsername: req.user.username,
+    // تحديث المتابِع (إضافة المتابَع إلى قائمة المتابَعين)
+    followerUser.following.push(targetUserId);
+    followerUser.followingCount = followerUser.following.length;
+    await followerUser.save();
+
+    // استخدام خدمة الإشعارات إذا كانت متاحة
+    const io = req.app.get('io');
+    if (io) {
+      // بث حدث المتابعة
+      io.emit('userFollowed', {
+        followerId,
+        targetUserId,
+        follower: {
+          _id: followerUser._id,
+          username: followerUser.username,
+          avatar: followerUser.avatar
+        },
+        targetUser: {
+          _id: targetUser._id,
+          username: targetUser.username,
+          avatar: targetUser.avatar
+        },
+        timestamp: new Date()
+      });
+
+      // بث تحديث الإحصائيات للمستخدم المستهدف
+      io.emit('followStatsUpdate', {
+        userId: targetUserId,
+        followersCount: targetUser.followersCount,
+        followingCount: targetUser.followingCount
+      });
+
+      // بث تحديث الإحصائيات للمستخدم المتابِع
+      io.emit('followStatsUpdate', {
+        userId: followerId,
+        followersCount: followerUser.followersCount,
+        followingCount: followerUser.followingCount
+      });
+
+      // إرسال إشعار للمستخدم المتابَع
+      io.to(`user_${targetUserId}`).emit('newFollower', {
+        follower: {
+          _id: followerUser._id,
+          username: followerUser.username,
+          avatar: followerUser.avatar
+        },
         timestamp: new Date()
       });
     }
 
-    // الحصول على العدد المحدث
-    const updatedTargetUser = await User.findById(targetUserId);
-    
     res.status(200).json({
       success: true,
-      message: `You are now following ${targetUser.username}`,
+      message: 'User followed successfully',
       data: {
-        isFollowing: true,
-        followersCount: updatedTargetUser.followers.length
+        followersCount: targetUser.followersCount,
+        followingCount: targetUser.followingCount
       }
     });
+
   } catch (error) {
     next(error);
   }
@@ -74,21 +107,20 @@ exports.followUser = async (req, res, next) => {
 exports.unfollowUser = async (req, res, next) => {
   try {
     const targetUserId = req.params.id;
-    const currentUserId = req.user.id;
+    const followerId = req.user.id;
 
-    const [currentUser, targetUser] = await Promise.all([
-      User.findById(currentUserId),
-      User.findById(targetUserId)
-    ]);
+    const targetUser = await User.findById(targetUserId);
+    const followerUser = await User.findById(followerId);
 
-    if (!targetUser) {
+    if (!targetUser || !followerUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
-    const isFollowing = currentUser.following.includes(targetUserId);
+    // التحقق إذا كان المستخدم يتابع بالفعل
+    const isFollowing = targetUser.followers.includes(followerId);
     
     if (!isFollowing) {
       return res.status(400).json({
@@ -97,26 +129,64 @@ exports.unfollowUser = async (req, res, next) => {
       });
     }
 
-    await Promise.all([
-      User.findByIdAndUpdate(currentUserId, {
-        $pull: { following: targetUserId }
-      }),
-      User.findByIdAndUpdate(targetUserId, {
-        $pull: { followers: currentUserId }
-      })
-    ]);
+    // تحديث المتابَع (إزالة المتابِع من قائمة المتابعين)
+    targetUser.followers = targetUser.followers.filter(
+      id => id.toString() !== followerId
+    );
+    targetUser.followersCount = targetUser.followers.length;
+    await targetUser.save();
 
-    // الحصول على العدد المحدث
-    const updatedTargetUser = await User.findById(targetUserId);
+    // تحديث المتابِع (إزالة المتابَع من قائمة المتابَعين)
+    followerUser.following = followerUser.following.filter(
+      id => id.toString() !== targetUserId
+    );
+    followerUser.followingCount = followerUser.following.length;
+    await followerUser.save();
+
+    // استخدام خدمة الإشعارات إذا كانت متاحة
+    const io = req.app.get('io');
+    if (io) {
+      // بث حدث إلغاء المتابعة
+      io.emit('userUnfollowed', {
+        followerId,
+        targetUserId,
+        follower: {
+          _id: followerUser._id,
+          username: followerUser.username,
+          avatar: followerUser.avatar
+        },
+        targetUser: {
+          _id: targetUser._id,
+          username: targetUser.username,
+          avatar: targetUser.avatar
+        },
+        timestamp: new Date()
+      });
+
+      // بث تحديث الإحصائيات للمستخدم المستهدف
+      io.emit('followStatsUpdate', {
+        userId: targetUserId,
+        followersCount: targetUser.followersCount,
+        followingCount: targetUser.followingCount
+      });
+
+      // بث تحديث الإحصائيات للمستخدم المتابِع
+      io.emit('followStatsUpdate', {
+        userId: followerId,
+        followersCount: followerUser.followersCount,
+        followingCount: followerUser.followingCount
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: `You have unfollowed ${targetUser.username}`,
+      message: 'User unfollowed successfully',
       data: {
-        isFollowing: false,
-        followersCount: updatedTargetUser.followers.length
+        followersCount: targetUser.followersCount,
+        followingCount: targetUser.followingCount
       }
     });
+
   } catch (error) {
     next(error);
   }
@@ -139,15 +209,13 @@ exports.getFollowStatus = async (req, res, next) => {
   }
 };
 
+
 exports.getUserStats = async (req, res, next) => {
   try {
     const userId = req.params.id;
     
-    const [user, postsCount] = await Promise.all([
-      User.findById(userId).select('followers following'),
-      Post.countDocuments({ author: userId, status: 'published' })
-    ]);
-
+    const user = await User.findById(userId).select('followersCount followingCount');
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -155,11 +223,16 @@ exports.getUserStats = async (req, res, next) => {
       });
     }
 
+    const postsCount = await Post.countDocuments({ 
+      author: userId, 
+      status: 'published' 
+    });
+
     res.status(200).json({
       success: true,
       data: {
-        followersCount: user.followers.length,
-        followingCount: user.following.length,
+        followersCount: user.followersCount || 0,
+        followingCount: user.followingCount || 0,
         postsCount
       }
     });
@@ -167,4 +240,3 @@ exports.getUserStats = async (req, res, next) => {
     next(error);
   }
 };
-

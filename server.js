@@ -9,6 +9,7 @@ const path = require('path');
 const Post = require('./models/Post'); // تأكد من استيراد نموذج Post
 const Comment = require('./models/Comment'); // تأكد من استيراد نموذج Comment
 const Like = require('./models/Like');
+const User = require('./models/User');
 // Initialize express
 const app = express();
 const server = http.createServer(app);
@@ -285,24 +286,80 @@ socket.on('viewPost', async (data) => {
 })
 
 
+
+
+
+// في قسم Socket.io connection handling
 socket.on('followUser', async (data) => {
   try {
     const { targetUserId, followerId } = data;
     
-    // بث الحدث للمستخدم المتابَع
-    io.to(`user_${targetUserId}`).emit('userFollowed', {
-      followerId,
-      targetUserId,
-      timestamp: new Date()
-    });
-    
-    // بث الحدث لجميع المتصلين لتحديث الإحصائيات
+    if (targetUserId === followerId) {
+      return;
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    const followerUser = await User.findById(followerId);
+
+    if (!targetUser || !followerUser) {
+      return;
+    }
+
+    // التحقق من عدم المتابعة مسبقاً
+    const isAlreadyFollowing = targetUser.followers.includes(followerId);
+    if (isAlreadyFollowing) {
+      return;
+    }
+
+    // تحديث قاعدة البيانات بنفس المنطق
+    targetUser.followers.push(followerId);
+    targetUser.followersCount = targetUser.followers.length;
+    await targetUser.save();
+
+    followerUser.following.push(targetUserId);
+    followerUser.followingCount = followerUser.following.length;
+    await followerUser.save();
+
+    // بث الأحداث
     io.emit('userFollowed', {
       followerId,
       targetUserId,
+      follower: {
+        _id: followerUser._id,
+        username: followerUser.username,
+        avatar: followerUser.avatar
+      },
+      targetUser: {
+        _id: targetUser._id,
+        username: targetUser.username,
+        avatar: targetUser.avatar
+      },
       timestamp: new Date()
     });
-    
+
+    // تحديث إحصائيات المستخدم المستهدف
+    io.emit('followStatsUpdate', {
+      userId: targetUserId,
+      followersCount: targetUser.followersCount,
+      followingCount: targetUser.followingCount
+    });
+
+    // تحديث إحصائيات المستخدم المتابِع
+    io.emit('followStatsUpdate', {
+      userId: followerId,
+      followersCount: followerUser.followersCount,
+      followingCount: followerUser.followingCount
+    });
+
+    io.to(`user_${targetUserId}`).emit('newFollower', {
+      follower: {
+        _id: followerUser._id,
+        username: followerUser.username,
+        avatar: followerUser.avatar
+      },
+      timestamp: new Date()
+    });
+
     console.log(`User ${followerId} followed user ${targetUserId}`);
   } catch (error) {
     console.error('Error handling followUser:', error);
@@ -312,30 +369,78 @@ socket.on('followUser', async (data) => {
 socket.on('unfollowUser', async (data) => {
   try {
     const { targetUserId, followerId } = data;
-    
-    // بث الحدث للمستخدم المتابَع
-    io.to(`user_${targetUserId}`).emit('userUnfollowed', {
-      followerId,
-      targetUserId,
-      timestamp: new Date()
-    });
-    
-    // بث الحدث لجميع المتصلين لتحديث الإحصائيات
+
+    const targetUser = await User.findById(targetUserId);
+    const followerUser = await User.findById(followerId);
+
+    if (!targetUser || !followerUser) {
+      return;
+    }
+
+    // التحقق من المتابعة مسبقاً
+    const isFollowing = targetUser.followers.includes(followerId);
+    if (!isFollowing) {
+      return;
+    }
+
+    // تحديث قاعدة البيانات
+    targetUser.followers = targetUser.followers.filter(
+      id => id.toString() !== followerId
+    );
+    targetUser.followersCount = targetUser.followers.length;
+    await targetUser.save();
+
+    followerUser.following = followerUser.following.filter(
+      id => id.toString() !== targetUserId
+    );
+    followerUser.followingCount = followerUser.following.length;
+    await followerUser.save();
+
+    // بث الأحداث
     io.emit('userUnfollowed', {
       followerId,
       targetUserId,
+      follower: {
+        _id: followerUser._id,
+        username: followerUser.username,
+        avatar: followerUser.avatar
+      },
+      targetUser: {
+        _id: targetUser._id,
+        username: targetUser.username,
+        avatar: targetUser.avatar
+      },
       timestamp: new Date()
     });
-    
+
+    // تحديث إحصائيات المستخدم المستهدف
+    io.emit('followStatsUpdate', {
+      userId: targetUserId,
+      followersCount: targetUser.followersCount,
+      followingCount: targetUser.followingCount
+    });
+
+    // تحديث إحصائيات المستخدم المتابِع
+    io.emit('followStatsUpdate', {
+      userId: followerId,
+      followersCount: followerUser.followersCount,
+      followingCount: followerUser.followingCount
+    });
+
     console.log(`User ${followerId} unfollowed user ${targetUserId}`);
   } catch (error) {
     console.error('Error handling unfollowUser:', error);
   }
 });
+
+
+
   // Disconnect
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
+
+
 });
 
 

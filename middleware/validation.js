@@ -53,12 +53,16 @@ exports.forgotPasswordValidation = [
 exports.resetPasswordValidation = [
   body('token')
     .notEmpty()
-    .withMessage('Reset token is required'),
+    .withMessage('Reset code is required')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Reset code must be 6 digits')
+    .isNumeric()
+    .withMessage('Reset code must contain only numbers'),
   
   body('newPassword')
-    .isLength({ min: 6 })
+    .isLength({ min: 8 })
     .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
 ];
 

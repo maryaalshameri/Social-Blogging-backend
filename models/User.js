@@ -44,6 +44,18 @@ const userSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
       }],
+      followersCount: {
+    type: Number,
+    default: 0
+  },
+  followingCount: {
+    type: Number,
+    default: 0
+  },
+  postsCount: {
+    type: Number,
+    default: 0
+  },
       isEmailVerified: {
       type: Boolean,
       default: false
@@ -73,7 +85,15 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
-      return await bcrypt.compare(candidatePassword, this.password);
+if (!candidatePassword || typeof candidatePassword !== 'string') {
+    throw new Error('Invalid candidate password');
+  }
+  
+  if (!this.password) {
+    throw new Error('User password is not available. Make sure to use .select("+password") when querying the user.');
+  }
+  
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Remove password from JSON output
